@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SRR Daily Checklist — Live</title>
+<style>
+  :root {
+    --bg:#f0f2f5;--surface:#fff;--border:#dce0e6;
+    --accent:#1877f2;--accent2:#42b72a;--warn:#f7b928;
+    --danger:#fa3e3e;--text:#1c1e21;--muted:#65676b;
+    --font:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+
+  .header{background:#1877f2;padding:0.85rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 4px rgba(0,0,0,.15);gap:10px;flex-wrap:wrap}
+  .logo{font-weight:700;font-size:1.05rem;color:#fff;white-space:nowrap}
+  .logo span{color:rgba(255,255,255,.75);font-weight:400}
+  .header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .live-pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);cursor:pointer;white-space:nowrap;transition:background .15s}
+  .live-pill:hover{background:rgba(255,255,255,.25)}
+  .date-display{font-size:0.72rem;color:rgba(255,255,255,.8);text-align:right}
+  .date-display strong{display:block;color:#fff;font-size:0.85rem;font-weight:600}
+
+  /* NAME BAR */
+  .name-bar{background:#fff;border-bottom:1px solid var(--border);padding:8px 1.5rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .name-bar-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em;white-space:nowrap}
+  .name-inp{flex:1;min-width:140px;max-width:220px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);outline:none;transition:border-color .15s}
+  .name-inp:focus{border-color:var(--accent)}
+  .sync-status{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb;white-space:nowrap}
+  .last-sync{font-size:10px;color:var(--muted);white-space:nowrap}
+
+  .main{max-width:900px;margin:0 auto;padding:1.5rem 1rem}
+  .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.75rem}
+  .progress-wrap{display:flex;align-items:center;gap:0.75rem;flex:1}
+  .progress-bar{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;min-width:100px}
+  .progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .4s ease;width:0%}
+  .progress-label{font-size:0.72rem;color:var(--muted);white-space:nowrap}
+  .progress-label strong{color:var(--accent)}
+  .btn{font-family:var(--font);font-size:0.78rem;font-weight:600;padding:0.45rem 0.9rem;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--accent);cursor:pointer;transition:all .15s;white-space:nowrap}
+  .btn:hover{background:#e7f0fd;border-color:var(--accent)}
+  .btn-success{background:#42b72a;border-color:#42b72a;color:#fff}
+  .btn-success:hover{background:#36a420;color:#fff}
+  .btn-danger{border-color:#fa3e3e;color:#fa3e3e}
+  .btn-danger:hover{background:#fa3e3e;color:#fff}
+
+  /* LOADING OVERLAY */
+  .loading-overlay{position:fixed;inset:0;background:rgba(240,242,245,.9);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+  .spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-txt{font-size:14px;font-weight:600;color:var(--muted)}
+
+  /* WHO IS ONLINE */
+  .online-bar{background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:1rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px}
+  .online-label{font-weight:700;color:var(--muted);letter-spacing:.05em}
+  .online-chip{font-size:11px;padding:2px 9px;border-radius:20px;background:#e7f3ff;color:#1877f2;border:1px solid #b3d4ff;font-weight:600}
+
+  .department{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:1.1rem;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.07);transition:border-color .2s}
+  .department.complete{border-color:#42b72a;border-left:4px solid #42b72a}
+  .dept-header{display:flex;align-items:center;justify-content:space-between;padding:0.9rem 1.1rem;background:#fff;cursor:pointer;user-select:none;gap:0.75rem;border-bottom:1px solid var(--border)}
+  .dept-header:hover{background:#f0f2f5}
+  .dept-title{font-weight:700;font-size:0.9rem;display:flex;align-items:center;gap:0.5rem}
+  .dept-title-text{display:flex;flex-direction:column;gap:2px}
+  .dept-title-my{font-size:0.68rem;font-weight:400;color:var(--muted)}
+  .dept-icon{font-size:1rem}
+  .dept-badge{font-size:0.62rem;padding:2px 7px;border-radius:10px;border:1px solid var(--border);color:var(--muted);white-space:nowrap}
+  .dept-badge.done{border-color:#42b72a;color:#42b72a;background:#e6f4ea}
+  .dept-mini-bar{width:70px;height:4px;background:#dce0e6;border-radius:2px;overflow:hidden;flex-shrink:0}
+  .dept-mini-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s}
+  .dept-arrow{color:var(--muted);font-size:0.65rem;transition:transform .2s}
+  .dept-body{padding:0.4rem 0;display:none;background:#fff}
+  .dept-body.open{display:block}
+  .dept-arrow.open{transform:rotate(90deg)}
+
+  .checklist-item{display:flex;align-items:center;gap:0.65rem;padding:0.6rem 1.1rem;border-bottom:1px solid #f0f2f5;transition:background .1s;position:relative}
+  .checklist-item:last-child{border-bottom:none}
+  .checklist-item:hover{background:#f7f8fa}
+  .checklist-item.checked{opacity:.5}
+  .checklist-item input[type="checkbox"]{appearance:none;width:19px;height:19px;border:2px solid #bcc0c4;border-radius:50%;background:#fff;cursor:pointer;flex-shrink:0;transition:all .15s;position:relative}
+  .checklist-item input[type="checkbox"]:checked{background:var(--accent);border-color:var(--accent)}
+  .checklist-item input[type="checkbox"]:checked::after{content:'✓';position:absolute;top:-1px;left:3px;font-size:12px;color:#fff;font-weight:bold}
+  .item-num{font-size:0.62rem;color:var(--muted);min-width:16px;text-align:right}
+  .item-text{flex:1;font-size:0.82rem;line-height:1.4}
+  .item-text .burmese{display:block;font-size:0.68rem;color:var(--muted);margin-top:2px}
+  .time-input{font-size:0.68rem;background:#f0f2f5;border:1px solid var(--border);border-radius:5px;color:var(--text);padding:0.28rem 0.4rem;width:72px;text-align:center}
+  .time-input:focus{outline:none;border-color:var(--accent);background:#fff}
+  .time-label{font-size:0.58rem;color:var(--muted);text-align:center;margin-top:2px}
+  .time-wrap{display:flex;flex-direction:column;align-items:center}
+  /* who checked badge */
+  .who-checked{position:absolute;right:155px;font-size:9px;color:var(--muted);background:#f0f2f5;padding:1px 6px;border-radius:10px;white-space:nowrap;display:none}
+  .checklist-item.checked .who-checked{display:block}
+
+  .health-rating-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0}
+  .health-rating-label{font-size:0.58rem;color:var(--muted);text-align:center;font-weight:700;letter-spacing:.05em}
+  .health-stars{display:flex;gap:2px}
+  .health-star{font-size:1rem;cursor:pointer;transition:transform .1s,filter .1s;filter:grayscale(1) opacity(.3);line-height:1;user-select:none}
+  .health-star:hover{filter:none;transform:scale(1.2)}
+  .health-star.active{filter:none}
+  .health-status{font-size:0.58rem;font-weight:700;letter-spacing:.03em;white-space:nowrap;min-height:12px;text-align:center}
+  .hs-1{color:#e53935}.hs-2{color:#fb8c00}.hs-3{color:#f7b928}.hs-4{color:#42b72a}.hs-5{color:#1877f2}
+
+  .notes-section{padding:0.65rem 1.1rem;border-top:1px solid #f0f2f5;background:#f7f8fa}
+  .notes-input{font-family:var(--font);font-size:0.72rem;background:#fff;border:1px solid var(--border);border-radius:6px;color:var(--text);padding:0.45rem 0.65rem;width:100%;resize:vertical;min-height:46px}
+  .notes-input:focus{outline:none;border-color:var(--accent)}
+  .notes-label{font-size:0.62rem;color:var(--muted);margin-bottom:0.3rem;letter-spacing:.05em;font-weight:600}
+
+  .summary-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-top:1.5rem;box-shadow:0 1px 2px rgba(0,0,0,.07)}
+  .summary-title{font-size:0.85rem;font-weight:700;margin-bottom:0.85rem;color:var(--muted);letter-spacing:.06em}
+  .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.65rem;margin-bottom:0.85rem}
+  .summary-card{background:#f0f2f5;border:1px solid var(--border);border-radius:7px;padding:0.65rem 0.85rem}
+  .summary-card .label{font-size:0.62rem;color:var(--muted);margin-bottom:4px;font-weight:600}
+  .summary-card .value{font-size:1.05rem;font-weight:700;color:var(--text)}
+  .summary-card .value.green{color:#42b72a}.summary-card .value.yellow{color:#f7b928}
+  .export-row{display:flex;gap:0.65rem;margin-top:0.85rem;flex-wrap:wrap}
+
+  #toast{position:fixed;bottom:1.25rem;right:1.25rem;background:#1877f2;color:#fff;padding:0.55rem 0.9rem;border-radius:7px;font-size:0.72rem;opacity:0;transform:translateY(10px);transition:all .3s;z-index:999;pointer-events:none;box-shadow:0 4px 12px rgba(24,119,242,.4)}
+  #toast.show{opacity:1;transform:translateY(0)}
+
+  /* SUPERVISOR SIGN-OFF */
+  .supervisor-section{padding:0.75rem 1.1rem;border-top:2px solid #f0f2f5;background:#fafbfc;display:flex;flex-direction:column;gap:0.5rem}
+  .supervisor-section.approved{background:#e6f4ea;border-top:2px solid #42b72a}
+  .supervisor-label{font-size:0.65rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+  .supervisor-approved-row{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+  .supervisor-approved-badge{display:inline-flex;align-items:center;gap:5px;background:#42b72a;color:#fff;font-size:0.72rem;font-weight:700;padding:5px 12px;border-radius:20px}
+  .supervisor-approved-meta{font-size:0.65rem;color:#1a5c0c}
+  .supervisor-input-row{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+  .supervisor-inp{flex:1;min-width:120px;max-width:180px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font);outline:none;transition:border-color .15s}
+  .supervisor-inp:focus{border-color:#42b72a}
+  .btn-approve{font-family:var(--font);font-size:0.72rem;font-weight:700;padding:6px 14px;border-radius:6px;border:none;background:#42b72a;color:#fff;cursor:pointer;transition:background .15s;white-space:nowrap}
+  .btn-approve:hover{background:#36a420}
+  .btn-approve:disabled{background:#b0c4b8;cursor:not-allowed}
+  .supervisor-locked-notice{font-size:0.65rem;color:var(--muted);font-style:italic}
+  /* dept header supervisor badge */
+  .dept-sup-badge{font-size:0.58rem;padding:2px 7px;border-radius:10px;background:#e6f4ea;color:#1a5c0c;border:1px solid #a8d5b0;font-weight:700;white-space:nowrap}
+  /* submit lock notice */
+  .submit-lock{font-size:0.72rem;color:#c0392b;font-weight:600;margin-top:0.5rem;display:none}
+  .submit-lock.visible{display:block}
+
+  /* ── VET HEALTH REPORT ─────────────────────────────────── */
+  .vet-panel{background:#fff;border:2px solid #7c3aed;border-radius:12px;margin-top:1.75rem;overflow:hidden;box-shadow:0 2px 8px rgba(124,58,237,.12)}
+  .vet-panel-header{background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap}
+  .vet-panel-title{color:#fff;font-weight:700;font-size:1rem;display:flex;align-items:center;gap:0.5rem}
+  .vet-panel-sub{color:rgba(255,255,255,.75);font-size:0.68rem;margin-top:2px}
+  .vet-panel-badge{font-size:11px;padding:3px 11px;border-radius:20px;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.35);font-weight:700;white-space:nowrap}
+  .vet-panel-body{padding:1rem 1.25rem}
+
+  /* vet animal rows */
+  .vet-animal-card{background:#f9f7ff;border:1px solid #e0d7f8;border-radius:9px;margin-bottom:0.85rem;overflow:hidden}
+  .vet-animal-card.vet-done{border-color:#7c3aed;border-left:4px solid #7c3aed}
+  .vet-animal-header{display:flex;align-items:center;justify-content:space-between;padding:0.7rem 1rem;background:#f3eeff;cursor:pointer;user-select:none;gap:0.65rem;flex-wrap:wrap}
+  .vet-animal-header:hover{background:#ede8ff}
+  .vet-animal-name{font-weight:700;font-size:0.85rem;display:flex;align-items:center;gap:0.4rem}
+  .vet-animal-arrow{color:#7c3aed;font-size:0.6rem;transition:transform .2s}
+  .vet-animal-arrow.open{transform:rotate(90deg)}
+  .vet-animal-body{display:none;padding:0.75rem 1rem;border-top:1px solid #e0d7f8}
+  .vet-animal-body.open{display:block}
+
+  /* vet fields */
+  .vet-field-row{display:flex;flex-direction:column;gap:3px;margin-bottom:0.65rem}
+  .vet-field-label{font-size:0.62rem;font-weight:700;color:#5b21b6;letter-spacing:.05em;text-transform:uppercase}
+  .vet-field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0.5rem}
+  .vet-input{font-family:var(--font);font-size:0.78rem;background:#fff;border:1.5px solid #d8c8f5;border-radius:6px;color:var(--text);padding:0.4rem 0.6rem;width:100%;outline:none;transition:border-color .15s}
+  .vet-input:focus{border-color:#7c3aed;background:#fdfbff}
+  .vet-select{font-family:var(--font);font-size:0.78rem;background:#fff;border:1.5px solid #d8c8f5;border-radius:6px;color:var(--text);padding:0.4rem 0.6rem;width:100%;outline:none;transition:border-color .15s;cursor:pointer}
+  .vet-select:focus{border-color:#7c3aed}
+  .vet-textarea{font-family:var(--font);font-size:0.72rem;background:#fff;border:1.5px solid #d8c8f5;border-radius:6px;color:var(--text);padding:0.4rem 0.6rem;width:100%;resize:vertical;min-height:54px;outline:none;transition:border-color .15s}
+  .vet-textarea:focus{border-color:#7c3aed}
+
+  /* vet status badges */
+  .vet-status-healthy{color:#15803d;font-weight:700}
+  .vet-status-monitor{color:#b45309;font-weight:700}
+  .vet-status-sick{color:#dc2626;font-weight:700}
+  .vet-badge-status{font-size:0.6rem;padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap}
+  .vet-badge-healthy{background:#dcfce7;color:#15803d;border:1px solid #86efac}
+  .vet-badge-monitor{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+  .vet-badge-sick{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+  .vet-badge-none{background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb}
+
+  /* vet sign-off area */
+  .vet-signoff-row{display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:1rem;padding-top:1rem;border-top:2px dashed #e0d7f8}
+  .vet-signoff-box{flex:1;min-width:200px;background:#faf9ff;border:1.5px solid #d8c8f5;border-radius:9px;padding:0.85rem;display:flex;flex-direction:column;gap:0.5rem}
+  .vet-signoff-box.signed{background:#f0fdf4;border-color:#86efac}
+  .vet-signoff-box.signed-mgr{background:#eff6ff;border-color:#93c5fd}
+  .vet-signoff-title{font-size:0.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5b21b6}
+  .vet-signoff-title-mgr{color:#1d4ed8}
+  .vet-signed-badge{display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;font-weight:700;padding:4px 11px;border-radius:20px;background:#16a34a;color:#fff}
+  .vet-signed-badge-mgr{background:#1d4ed8}
+  .vet-signed-meta{font-size:0.65rem;color:var(--muted);margin-top:2px}
+  .vet-signoff-inp-row{display:flex;gap:0.5rem;flex-wrap:wrap}
+  .vet-signoff-inp{flex:1;min-width:110px;padding:6px 10px;border:1.5px solid #d8c8f5;border-radius:6px;font-size:12px;font-family:var(--font);outline:none;transition:border-color .15s}
+  .vet-signoff-inp:focus{border-color:#7c3aed}
+  .btn-vet-sign{font-family:var(--font);font-size:0.72rem;font-weight:700;padding:6px 14px;border-radius:6px;border:none;background:#7c3aed;color:#fff;cursor:pointer;transition:background .15s;white-space:nowrap}
+  .btn-vet-sign:hover{background:#6d28d9}
+  .btn-vet-sign-mgr{background:#1d4ed8}
+  .btn-vet-sign-mgr:hover{background:#1e40af}
+  .vet-signoff-locked{font-size:0.65rem;color:var(--muted);font-style:italic}
+
+  /* vet summary bar */
+  .vet-summary-bar{display:flex;gap:0.65rem;flex-wrap:wrap;margin-bottom:1rem;padding:0.75rem 1rem;background:#f3eeff;border-radius:8px;border:1px solid #e0d7f8}
+  .vet-stat{text-align:center;flex:1;min-width:70px}
+  .vet-stat-val{font-size:1.05rem;font-weight:700;color:#5b21b6}
+  .vet-stat-lbl{font-size:0.58rem;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-top:1px}
+
+  @media(max-width:600px){
+    .main{padding:0.75rem}.header{padding:0.65rem 0.85rem}
+    .item-text{font-size:0.75rem}.time-input{width:60px}
+  }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-txt">Loading checklist… · စစ်ဆေးစာရင်း ဖွင့်နေသည်…</div>
+</div>
+
+<div class="header">
+  <div class="logo">SRR <span>/ Daily Ops Checklist</span> <span style="font-size:10px;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:10px;margin-left:6px">🔴 LIVE</span></div>
+  <div class="header-right">
+    <span class="live-pill" id="live-pill" onclick="loadState(true)">⬤ Connecting…</span>
+    <div class="date-display"><strong id="dateStr"></strong><span id="timeStr"></span></div>
+  </div>
+</div>
+
+<!-- NAME BAR -->
+<div class="name-bar">
+  <span class="name-bar-label">YOUR NAME · နာမည်</span>
+  <input class="name-inp" id="employee-name" placeholder="Enter your name..." oninput="onNameChange()">
+  <span class="sync-status" id="sync-status">⬤ Not synced</span>
+  <span class="last-sync" id="last-sync"></span>
+  <button type="button" class="btn btn-success" id="nameBarSaveBtn" onclick="saveToSheet()">☁️ Save to Sheet</button>
+</div>
+
+<div class="main">
+  <div class="top-bar">
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="mainProgress"></div></div>
+      <div class="progress-label"><strong id="progressCount">0/0</strong> tasks done</div>
+    </div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+      <button type="button" class="btn" onclick="expandAll()">Expand all</button>
+      <button type="button" class="btn" onclick="collapseAll()">Collapse</button>
+      <button type="button" class="btn btn-danger" onclick="resetDay()">↺ Reset day</button>
+      <button type="button" class="btn" onclick="exportReport()">📋 Export</button>
+    </div>
+  </div>
+
+  <!-- ONLINE NOW -->
+  <div class="online-bar" id="online-bar" style="display:none">
+    <span class="online-label">ONLINE NOW ·</span>
+    <div id="online-chips"></div>
+    <span style="margin-left:auto;font-size:10px;color:var(--muted)">Updates every 20s · ၂၀ စက္ကန့်တစ်ကြိမ် အသစ်ဆွဲ</span>
+  </div>
+
+  <div id="departments"></div>
+
+  <div class="summary-panel">
+    <div class="summary-title">DAILY SUMMARY</div>
+    <div class="summary-grid" id="summaryGrid"></div>
+    <div class="export-row">
+      <button type="button" class="btn btn-success" id="mainSaveBtn" onclick="saveToSheet()">☁️ Save to Sheet</button>
+      <button type="button" class="btn" onclick="exportReport()">📋 Export report</button>
+      <button type="button" class="btn" onclick="printReport()">🖨 Print</button>
+    </div>
+    <div class="submit-lock" id="submitLockNotice">⚠️ Supervisor sign-off required for all completed departments before saving.</div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<!-- ── VET HEALTH REPORT ─────────────────────────────────── -->
+<div class="main" style="padding-top:0">
+  <div class="vet-panel" id="vetPanel">
+    <div class="vet-panel-header">
+      <div>
+        <div class="vet-panel-title">🩺 Veterinary Health Report <span class="vet-panel-badge" id="vetPanelBadge">0 / 8 filled</span></div>
+        <div class="vet-panel-sub">Filled by vets each day • Reviewed &amp; signed off by Manager • မန်နေဂျာ လက်မှတ်ထိုးရမည်</div>
+      </div>
+      <button type="button" class="btn" style="font-size:0.72rem" onclick="toggleVetPanel()">▼ Collapse</button>
+    </div>
+    <div class="vet-panel-body" id="vetPanelBody">
+      <!-- summary stats -->
+      <div class="vet-summary-bar" id="vetSummaryBar">
+        <div class="vet-stat"><div class="vet-stat-val" id="vetStatHealthy">—</div><div class="vet-stat-lbl">Healthy</div></div>
+        <div class="vet-stat"><div class="vet-stat-val" id="vetStatMonitor" style="color:#b45309">—</div><div class="vet-stat-lbl">Monitor</div></div>
+        <div class="vet-stat"><div class="vet-stat-val" id="vetStatSick" style="color:#dc2626">—</div><div class="vet-stat-lbl">Sick</div></div>
+        <div class="vet-stat"><div class="vet-stat-val" id="vetStatMeds" style="color:#dc2626">—</div><div class="vet-stat-lbl">Deaths</div></div>
+        <div class="vet-stat"><div class="vet-stat-val" id="vetStatFilled">0/8</div><div class="vet-stat-lbl">Sections Done</div></div>
+      </div>
+      <div id="vetAnimalCards"></div>
+      <!-- SIGN-OFF ROW -->
+      <div class="vet-signoff-row">
+        <!-- VET SIGN-OFF -->
+        <div class="vet-signoff-box" id="vetSignBox">
+          <div class="vet-signoff-title">🩺 Vet Confirmation · <span style="font-weight:400;font-size:0.62rem">ကြီးကြပ်သူနှင့် ဆွေးနွေးပြီး ဤနေရာတွင် လက်မှတ်ထိုးခိုင်းပါ။</span></div>
+          <div class="vet-signoff-locked" id="vetSignLocked">Fill in all animal sections above to sign off.</div>
+          <div id="vetSignInputArea" style="display:none">
+            <div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.4rem">I confirm the above health data is accurate for today.</div>
+            <div class="vet-signoff-inp-row">
+              <input class="vet-signoff-inp" id="vetSignName" placeholder="Vet name…" type="text">
+              <button type="button" class="btn-vet-sign" onclick="onVetSign()">Sign ✓</button>
+            </div>
+          </div>
+          <div id="vetSignDone" style="display:none"></div>
+        </div>
+        <!-- MANAGER SIGN-OFF -->
+        <div class="vet-signoff-box" id="mgrSignBox">
+          <div class="vet-signoff-title vet-signoff-title-mgr">👔 Manager Acknowledgement · <span style="font-weight:400;font-size:0.62rem">ကြီးကြပ်သူနှင့် ဆွေးနွေးပြီး ဤနေရာတွင် လက်မှတ်ထိုးခိုင်းပါ။</span></div>
+          <div class="vet-signoff-locked" id="mgrSignLocked">Vet must sign off first.</div>
+          <div id="mgrSignInputArea" style="display:none">
+            <div style="font-size:0.65rem;color:var(--muted);margin-bottom:0.4rem">I have reviewed today's animal health report with the vet.</div>
+            <div class="vet-signoff-inp-row">
+              <input class="vet-signoff-inp" id="mgrSignName" placeholder="Manager name…" type="text">
+              <button type="button" class="btn-vet-sign btn-vet-sign-mgr" onclick="onMgrSign()">Acknowledge ✓</button>
+            </div>
+          </div>
+          <div id="mgrSignDone" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────
+var SHEET_URL = 'https://script.google.com/macros/s/AKfycbyN99i7pBa-QyDMu6OWM3S8l97yBXmcJT7WdLyJIP3FnU2H4Hvg4A0snmNOLV4wXp6yAQ/exec';
+var POLL_MS   = 20000; // 20 seconds
+
+// ── DEPARTMENT DATA ───────────────────────────────────────
+var HEALTH_LABELS = ['','Critical','Poor','Fair','Good','Excellent'];
+var HEALTH_ICONS  = ['','🔴','🟠','🟡','🟢','💚'];
+
+var DEPARTMENTS = [
+  {id:'hibernation',name:'Hibernation Rooms',burmese:'ဆောင်းခိုခြင်း အခန်းများ',icon:'❄️',hasHealthRating:false,items:[
+    {en:'Animal healthy',my:'တိရစ္ဆာန်အားလုံး ကျန်းမာကြပါစေ'},
+    {en:'Correct light schedule',my:'မှန်ကန်သောအလင်းအချိန်ဇယား'},
+    {en:'A/C working correctly',my:'လေအေးပေးစက် မှန်ကန်စွာ အလုပ်လုပ်ခြင်း'},
+    {en:'Dates and schedules — write down data',my:'အပတ်စဉ်စစ်ဆေးပြီးသည်နှင့် အချက်အလက်များကို ချရေးပါ'},
+  ]},
+  {id:'eggroom',name:'Egg Room',burmese:'ကြက်ဥ ပေါက်ဖွားတဲ့ အခန်း',icon:'🥚',hasHealthRating:false,items:[
+    {en:'Cleanliness — each incubator',my:'သိုလှောင်ခန်းအတွင်း သန့်ရှင်းမှု'},
+    {en:'Heat bulbs all working',my:'အပူမီးသီးများ အားလုံး အလုပ်ဖြစ်နေပါပြီ'},
+    {en:'Air conditioner working',my:'လေအေးပေးစက် အလုပ်လုပ်သည်'},
+    {en:'Fans all working correctly',my:'ပရိသတ်တွေအားလုံး မှန်ကန်စွာ လုပ်ဆောင်နေပါတယ်'},
+    {en:'Temperature 28°C correct',my:'မှန်ကန်သောအပူချိန်'},
+    {en:'Correct data online — up to date',my:'အွန်လိုင်းဒေတာသည် မှန်ကန်ပြီး ခေတ်မီသည်'},
+    {en:'All information written correctly',my:'အချက်အလက်အားလုံး မှန်ကန်ကြောင်း ရေးသားထားသည်'},
+    {en:'Coconut moisture correct',my:'ကြက်ဥပုံးထဲတွင် အညစ်အကြေးများကို မှန်ကန်စွာ ရောစပ်ပါ'},
+    {en:'Holes in egg box are good',my:'ကြက်ဥပုံးထဲက အပေါက်တွေက ကောင်းတယ်'},
+    {en:'Writing correct information on box',my:'ကြက်ဥပုံးပေါ်မှာ ရေးထားတဲ့ အချက်အလက်တွေက မှန်ပါတယ်'},
+  ]},
+  {id:'woodencage',name:'Wooden Cage',burmese:'သစ်သားသင်တန်း',icon:'🪵',hasHealthRating:true,items:[
+    {en:'Animal health',my:'တိရစ္ဆာန်အားလုံး ကျန်းမာကြပါစေ'},
+    {en:'Lights in each cage — on or off correctly',my:'လှောင်အိမ်တစ်ခုစီရှိ မီးများကို အဖွင့် သို့မဟုတ် ပိတ်ရန် လိုအပ်သည်'},
+    {en:'Cleanliness each row — no spider webs or dust',my:'အတန်းတိုင်းကို သန့်ရှင်းပါ'},
+    {en:'Animal sizes and quantity correct',my:'တိရစ္ဆာန်များ၏ အရွယ်အစားနှင့် အရေအတွက် မှန်ကန်ရန်'},
+    {en:'Clean windows',my:'ပြတင်းပေါက်များကို ပုံမှန်သန့်ရှင်းရေးလုပ်ရန်'},
+    {en:'Enough sand or rocks in cage',my:'လှောင်အိမ်တစ်ခုစီတွင် သဲများနှင့် ကျောက်တုံးများ လုံလောက်သည်'},
+  ]},
+  {id:'infr',name:'INFR #1 & #2',burmese:'INFR အခန်းများ',icon:'🦎',hasHealthRating:true,items:[
+    {en:'Animals healthy',my:'တိရစ္ဆာန်အားလုံး ကျန်းမာကြပါစေ'},
+    {en:'Temperature correct setting',my:'မှန်ကန်သော အပူချိန် သတ်မှတ်ခြင်း'},
+    {en:'Correct light schedules',my:'မှန်ကန်သောအလင်းအချိန်ဇယား'},
+    {en:'Cleanliness — no dust, no spider webs',my:'သန့်ရှင်းမှု — ဖုန်မှုန့်နှင့် ပင့်ကူမျှင်များ မရှိ'},
+    {en:'All lights working',my:'မီးအားလုံး အလုပ်လုပ်သည်'},
+    {en:'HVAC / humidity machines working',my:'အပူချိန်စက် အလုပ်လုပ်သည်'},
+    {en:'Amount of animals correct',my:'လှောင်အိမ်တစ်ခုစီတွင် တိရစ္ဆာန်ပမာဏမှန်ကန်သည်'},
+    {en:'Labels and cards — information correct',my:'တံဆိပ်များနှင့် ကတ်များပါ အချက်အလက် မှန်ကန်ပါသည်'},
+    {en:'Wooden branches still ok',my:'သစ်သားအကိုင်းအခက်များ ပြေနေသေးသည်'},
+    {en:'Enough rocks',my:'လှောင်အိမ်တစ်ခုစီတွင် လုံလောက်သော ကျောက်တုံးများ'},
+    {en:'Clean lights',my:'မီးလုံးတွေက သန့်ရှင်းတယ်'},
+  ]},
+  {id:'blacktubs',name:'Black Tubs',burmese:'အနက်ရောင် ပုံးများ',icon:'⬛',hasHealthRating:true,items:[
+    {en:'Animal healthy',my:'တိရစ္ဆာန်အားလုံး ကျန်းမာကြပါစေ'},
+    {en:'Signs correct',my:'လက္ခဏာတွေ မှန်တယ်'},
+    {en:'Sizes of animals correct',my:'တိရိစ္ဆာန်များ၏ အရွယ်အစားများ မှန်ကန်ပါသည်'},
+    {en:'Correct position of utensils — water bowl, papers',my:'အသုံးအဆောင် အနေအထားမှန် — ရေအိုးများနှင့် စာရွက်များ'},
+    {en:'Every tub with animal has climbing ladder',my:'တိရိစ္ဆာန်များပါရှိသော လှောင်အိမ်တိုင်းတွင် တောင်တက်လှေကားရှိသည်'},
+  ]},
+  {id:'whitetubs',name:'White Tubs',burmese:'အဖြူရောင် ပုံးများ',icon:'⬜',hasHealthRating:true,items:[
+    {en:'Animals healthy',my:'တိရစ္ဆာန်အားလုံး ကျန်းမာကြပါစေ'},
+    {en:'Sizes correct',my:'မှန်ကန်သောတိရစ္ဆာန်အရွယ်အစား'},
+    {en:'Amount per tub correct',my:'လှောင်အိမ်တစ်ခုစီရှိ တိရိစ္ဆာန် ပမာဏ မှန်ကန်ပါသည်'},
+    {en:'Cleanliness',my:'သန့်ရှင်းမှု'},
+    {en:'Signs correct',my:'လက္ခဏာတွေ မှန်တယ်'},
+    {en:'Rocks and sand — enough',my:'ကျောက်နဲ့သဲ လုံလောက်ပါတယ်'},
+    {en:'Skinny rows — being cared for',my:'ပိန်လှီပြီး ဖျားနာသော တိရစ္ဆာန်များကို ပြုစုစောင့်ရှောက်ပေးသည်'},
+    {en:'Fungus protocol clean',my:'မှိုများကို ဂရုစိုက်သည်'},
+    {en:'Take out any bad animals',my:'မကောင်းသော တိရစ္ဆာန်အပေါင်းကို ပြန်ယူဆောင်'},
+    {en:'No trash on top of each row',my:'အတန်းတစ်ခုစီ၏အပေါ်တွင် အမှိုက်မရှိ'},
+    {en:'Fans all working',my:'ပရိသတ်များနှင့် အရိပ်အာဝါသအားလုံး အလုပ်လုပ်နေပါသည်'},
+    {en:'Roof rollup film is working',my:'ခေါင်မိုးဖလင်လိပ်ခြင်း လုပ်ဆောင်နေပါသည်'},
+    {en:'Markings on animals still visible',my:'တိရိစ္ဆာန်များတွင် အမှတ်အသားများကို မြင်တွေ့နေရဆဲ'},
+  ]},
+  {id:'fr',name:'FR #1 & #2',burmese:'FR အခန်းများ',icon:'🐊',hasHealthRating:true,items:[
+    {en:'Animals healthy',my:'တိရစ္ဆာန်အားလုံး ကျန်းမာကြပါစေ'},
+    {en:'Sizes correct',my:'မှန်ကန်သောတိရစ္ဆာန်အရွယ်အစား'},
+    {en:'Amount per tub correct',my:'လှောင်အိမ်တစ်ခုစီရှိ တိရိစ္ဆာန် ပမာဏ မှန်ကန်ပါသည်'},
+    {en:'Cleanliness',my:'သန့်ရှင်းမှု'},
+    {en:'Signs correct',my:'လက္ခဏာတွေ မှန်တယ်'},
+    {en:'Rocks and sand — enough',my:'ကျောက်နဲ့သဲ လုံလောက်ပါတယ်'},
+    {en:'Skinny rows — being cared for',my:'ပိန်လှီပြီး ဖျားနာသော တိရစ္ဆာန်များကို ပြုစုစောင့်ရှောက်ပေးသည်'},
+    {en:'Fungus protocol clean',my:'မှိုများကို ဂရုစိုက်သည်'},
+    {en:'Take out any bad animals',my:'မကောင်းသော တိရစ္ဆာန်အပေါင်းကို ပြန်ယူဆောင်'},
+    {en:'No trash on top of each row',my:'အတန်းတစ်ခုစီ၏အပေါ်တွင် အမှိုက်မရှိ'},
+    {en:'Fans all working',my:'ပရိသတ်များနှင့် အရိပ်အာဝါသအားလုံး အလုပ်လုပ်နေပါသည်'},
+    {en:'Roof rollup film is working',my:'ခေါင်မိုးဖလင်လိပ်ခြင်း လုပ်ဆောင်နေပါသည်'},
+    {en:'Markings on animals still visible',my:'တိရိစ္ဆာန်များတွင် အမှတ်အသားများကို မြင်တွေ့နေရဆဲ'},
+  ]},
+  {id:'cricket',name:'Cricket Department',burmese:'ခရစ်ကတ်ဌာန',icon:'🦗',hasHealthRating:true,items:[
+    {en:'Check temperature in large room (33–34°C)',my:'အခန်းကျယ်တွင် အပူချိန်ကို စစ်ဆေးပါ'},
+    {en:'Check if all air conditioners are working',my:'လေအေးပေးစက်အားလုံး အလုပ်လုပ်သလား စစ်ဆေးပါ'},
+    {en:'Check if all heaters are working properly',my:'အပူပေးစက်အားလုံး ကောင်းမွန်စွာ အလုပ်လုပ်ခြင်း ရှိ၊ မရှိ စစ်ဆေးပါ'},
+    {en:'Check egg room temperature — 35°C and 90% humidity',my:'ကြက်ဥအခန်းအပူချိန်ကိုစစ်ဆေးပါ'},
+  ]},
+];
+
+// ── STATE ─────────────────────────────────────────────────
+var state         = {};
+var lastModified  = '';
+var pollTimer     = null;
+var onlineUsers   = [];
+
+function todayKey(){
+  var d=new Date();
+  return d.getFullYear()+'_'+(d.getMonth()+1)+'_'+d.getDate();
+}
+function myName(){ return (document.getElementById('employee-name').value||'').trim() || localStorage.getItem('srr_me')||''; }
+function onNameChange(){ localStorage.setItem('srr_me', document.getElementById('employee-name').value.trim()); }
+
+// ── HELPERS ───────────────────────────────────────────────
+function pad(n){return String(n).padStart(2,'0');}
+function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
+function updateClock(){
+  var now=new Date();
+  document.getElementById('dateStr').textContent=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('timeStr').textContent=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// ── LIVE PILL ─────────────────────────────────────────────
+function setPill(label,bg,color){
+  var el=document.getElementById('live-pill');
+  if(!el)return;
+  el.textContent=label;el.style.background=bg;el.style.color=color;el.style.border='1px solid '+color+'55';
+}
+function setSyncStatus(label,bg,color){
+  var el=document.getElementById('sync-status');
+  if(!el)return;
+  el.textContent=label;el.style.background=bg;el.style.color=color;el.style.border='1px solid '+color+'55';
+}
+function pillLive(){setPill('⬤ Live','rgba(66,183,42,.25)','#fff');}
+function pillLoad(){setPill('⬤ Loading…','rgba(255,255,255,.15)','rgba(255,255,255,.8)');}
+function pillOff(){setPill('⬤ Offline','rgba(255,255,255,.1)','rgba(255,255,255,.5)');}
+
+// ── EMPTY STATE ───────────────────────────────────────────
+function emptyState(){
+  var s={};
+  DEPARTMENTS.forEach(function(dept){
+    s[dept.id]={checks:new Array(dept.items.length).fill(false),times:new Array(dept.items.length).fill(''),checkedBy:new Array(dept.items.length).fill(''),notes:'',healthRating:dept.hasHealthRating?0:undefined,supApproved:false,supName:'',supTime:''};
+  });
+  return s;
+}
+
+// ── LOAD FROM SHEET ───────────────────────────────────────
+function loadState(force){
+  pillLoad();
+  var url=SHEET_URL+'?action=get_checklist&date='+todayKey()+'&t='+Date.now();
+  fetch(url)
+    .then(function(r){return r.json();})
+    .then(function(data){
+      document.getElementById('loading').style.display='none';
+      if(data.status==='ok' && data.state){
+        // Merge remote state — remote checks win for checked items, local wins for unchecked
+        var remote=data.state;
+        var merged=emptyState();
+        DEPARTMENTS.forEach(function(dept){
+          var rs=remote[dept.id]||{};
+          var ls=state[dept.id]||{};
+          merged[dept.id].notes=rs.notes||ls.notes||'';
+          merged[dept.id].healthRating=rs.healthRating||ls.healthRating||0;
+          merged[dept.id].supApproved=rs.supApproved||ls.supApproved||false;
+          merged[dept.id].supName=rs.supName||ls.supName||'';
+          merged[dept.id].supTime=rs.supTime||ls.supTime||'';
+          dept.items.forEach(function(_,i){
+            var rChk=rs.checks&&rs.checks[i];
+            var lChk=ls.checks&&ls.checks[i];
+            // Remote checked state always wins
+            merged[dept.id].checks[i]=rChk||lChk||false;
+            merged[dept.id].times[i]=(rs.times&&rs.times[i])||(ls.times&&ls.times[i])||'';
+            merged[dept.id].checkedBy[i]=(rs.checkedBy&&rs.checkedBy[i])||'';
+          });
+        });
+        state=merged;
+        if(data.vetReport) mergeVetState(data.vetReport);
+        lastModified=data.lastModified||'';
+        onlineUsers=data.onlineUsers||[];
+        renderAll();
+        updateOnlineBar();
+        pillLive();
+        if(data.lastModified){
+          var el=document.getElementById('last-sync');
+          if(el)el.textContent='Last update: '+String(data.lastModified).slice(11,16);
+        }
+      } else {
+        // No data yet for today — start fresh
+        if(!Object.keys(state).length) state=emptyState();
+        renderAll();
+        pillLive();
+        document.getElementById('loading').style.display='none';
+      }
+    })
+    .catch(function(){
+      pillOff();
+      document.getElementById('loading').style.display='none';
+      if(!Object.keys(state).length){ state=emptyState(); renderAll(); }
+      showToast('⚠️ Offline — showing local state');
+    });
+}
+
+// ── SAVE TO SHEET ─────────────────────────────────────────
+function saveToSheet(){
+  var name=myName();
+  if(!name){showToast('⚠️ Enter your name first · နာမည်ထည့်ပါ');document.getElementById('employee-name').focus();return;}
+  if(!allCompletedDeptsApproved()){showToast('⚠️ Supervisor sign-off required for all completed departments');return;}
+  setSyncStatus('⬤ Saving…','#dbeafe','#1e40af');
+  var payload=buildPayload(name);
+  fetch(SHEET_URL,{method:'POST',body:JSON.stringify(payload)})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      setSyncStatus('⬤ Saved ✓','#e6f4ea','#1a5c0c');
+      var el=document.getElementById('last-sync');
+      if(el)el.textContent='Saved at '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      showToast('✅ Saved to Sheet! Others will see your progress.');
+      lastModified=data.lastModified||lastModified;
+    })
+    .catch(function(){
+      setSyncStatus('⬤ Error','#fee2e2','#991b1b');
+      showToast('⚠️ Could not save — check connection');
+    });
+}
+
+// Auto-save on every check (debounced 2s)
+var autoSaveTimer=null;
+function scheduleAutoSave(){
+  if(autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer=setTimeout(function(){
+    if(myName()) saveToSheet();
+  }, 2000);
+}
+
+function buildPayload(name){
+  var depts=DEPARTMENTS.map(function(dept){
+    var s=state[dept.id]||{};
+    return{
+      id:dept.id,name:dept.name,burmese:dept.burmese,hasHealthRating:dept.hasHealthRating,
+      healthRating:s.healthRating||0,notes:s.notes||'',
+      supApproved:s.supApproved||false,supName:s.supName||'',supTime:s.supTime||'',
+      items:dept.items.map(function(item,i){return{en:item.en,my:item.my,checked:!!(s.checks&&s.checks[i]),time:(s.times&&s.times[i])||'',checkedBy:(s.checkedBy&&s.checkedBy[i])||''};})
+    };
+  });
+  return{action:'save_checklist',date:todayKey(),employee:name,departments:depts,vetReport:vetState,ts:new Date().toISOString()};
+}
+
+// ── POLLING ───────────────────────────────────────────────
+function startPolling(){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer=setInterval(function(){
+    fetch(SHEET_URL+'?action=get_checklist&date='+todayKey()+'&t='+Date.now())
+      .then(function(r){return r.json();})
+      .then(function(data){
+        if(data.status==='ok'&&data.state&&data.lastModified&&data.lastModified!==lastModified){
+          // Someone else made changes
+          var remote=data.state;
+          DEPARTMENTS.forEach(function(dept){
+            var rs=remote[dept.id];if(!rs)return;
+            dept.items.forEach(function(_,i){
+              if(rs.checks&&rs.checks[i]&&!state[dept.id].checks[i]){
+                // Remote checked something we hadn't — accept it
+                state[dept.id].checks[i]=true;
+                state[dept.id].times[i]=(rs.times&&rs.times[i])||state[dept.id].times[i];
+                state[dept.id].checkedBy[i]=(rs.checkedBy&&rs.checkedBy[i])||'';
+              }
+            });
+            if(rs.notes&&!state[dept.id].notes) state[dept.id].notes=rs.notes;
+            if(rs.healthRating&&!state[dept.id].healthRating) state[dept.id].healthRating=rs.healthRating;
+            if(rs.supApproved&&!state[dept.id].supApproved){state[dept.id].supApproved=rs.supApproved;state[dept.id].supName=rs.supName||'';state[dept.id].supTime=rs.supTime||'';}
+          });
+          lastModified=data.lastModified;
+          if(data.vetReport) mergeVetState(data.vetReport);
+          onlineUsers=data.onlineUsers||[];
+          renderAll();
+          updateOnlineBar();
+          pillLive();
+          var el=document.getElementById('last-sync');
+          if(el)el.textContent='Updated: '+String(data.lastModified).slice(11,16);
+          showToast('🔄 Updated by '+( data.lastEmployee||'a colleague'),'3000');
+        }
+        onlineUsers=data.onlineUsers||[];
+        updateOnlineBar();
+        pillLive();
+      })
+      .catch(function(){pillOff();});
+  }, POLL_MS);
+}
+
+// ── ONLINE BAR ────────────────────────────────────────────
+function updateOnlineBar(){
+  var bar=document.getElementById('online-bar');
+  var chips=document.getElementById('online-chips');
+  if(!onlineUsers||!onlineUsers.length){if(bar)bar.style.display='none';return;}
+  if(bar)bar.style.display='flex';
+  if(chips)chips.innerHTML=onlineUsers.map(function(u){return'<span class="online-chip">👤 '+u+'</span>';}).join('');
+}
+
+// ── CHECKLIST INTERACTIONS ────────────────────────────────
+function onCheck(deptId,idx){
+  var cb=document.getElementById('chk_'+deptId+'_'+idx);
+  state[deptId].checks[idx]=cb.checked;
+  if(cb.checked&&!state[deptId].times[idx]){
+    var now=new Date(),t=pad(now.getHours())+':'+pad(now.getMinutes());
+    state[deptId].times[idx]=t;
+    var ti=document.getElementById('time_'+deptId+'_'+idx);if(ti)ti.value=t;
+    state[deptId].checkedBy[idx]=myName()||'Unknown';
+    // show who badge
+    var wb=document.getElementById('who_'+deptId+'_'+idx);
+    if(wb){wb.textContent=state[deptId].checkedBy[idx];wb.style.display=cb.checked?'block':'none';}
+  }
+  document.getElementById('row_'+deptId+'_'+idx).className='checklist-item'+(cb.checked?' checked':'');
+  updateDeptProgress(deptId);updateProgress();
+  scheduleAutoSave();
+}
+function onTime(deptId,idx){state[deptId].times[idx]=document.getElementById('time_'+deptId+'_'+idx).value;scheduleAutoSave();}
+function onNotes(deptId){state[deptId].notes=document.getElementById('notes_'+deptId).value;scheduleAutoSave();}
+function onHealthRate(deptId,val){
+  state[deptId].healthRating=(state[deptId].healthRating===val)?0:val;
+  var el=document.getElementById('healthWidget_'+deptId);
+  if(el)el.innerHTML=buildHealthInner(deptId,state[deptId].healthRating);
+  showToast('Health: '+(HEALTH_ICONS[state[deptId].healthRating]||'—')+' '+(HEALTH_LABELS[state[deptId].healthRating]||'cleared'));
+  scheduleAutoSave();
+}
+
+// ── PROGRESS ─────────────────────────────────────────────
+function totalTasks(){return DEPARTMENTS.reduce(function(a,d){return a+d.items.length;},0);}
+function doneTasks(){return DEPARTMENTS.reduce(function(a,d){return a+(state[d.id]&&state[d.id].checks?state[d.id].checks.filter(Boolean).length:0);},0);}
+function deptDone(id){var d=DEPARTMENTS.find(function(x){return x.id===id;});var s=state[id];return s&&s.checks.filter(Boolean).length===d.items.length;}
+function updateProgress(){
+  var total=totalTasks(),done=doneTasks(),pct=total?(done/total*100):0;
+  document.getElementById('mainProgress').style.width=pct+'%';
+  document.getElementById('progressCount').textContent=done+'/'+total;
+  updateSaveButtonState();
+  updateSummary();
+}
+function updateDeptProgress(deptId){
+  var dept=DEPARTMENTS.find(function(d){return d.id===deptId;}),s=state[deptId];
+  var done=s.checks.filter(Boolean).length,total=dept.items.length,pct=total?(done/total*100):0;
+  var fill=document.getElementById('fill_'+deptId),badge=document.getElementById('badge_'+deptId),card=document.getElementById('dept_'+deptId);
+  if(fill)fill.style.width=pct+'%';
+  if(badge){badge.textContent=done+'/'+total;badge.className='dept-badge'+(done===total?' done':'');}
+  if(card)card.className='department'+(done===total?' complete':'');
+  // If dept just became complete, upgrade supervisor section from locked to input
+  var sec=document.getElementById('supSection_'+deptId);
+  if(sec&&!state[deptId].supApproved){
+    sec.outerHTML=buildSupervisorSection(deptId,state[deptId],done===total);
+  }
+  updateSaveButtonState();
+}
+function updateSummary(){
+  var total=totalTasks(),done=doneTasks(),pct=total?Math.round(done/total*100):0;
+  var completeDepts=DEPARTMENTS.filter(function(d){return deptDone(d.id);}).length;
+  document.getElementById('summaryGrid').innerHTML=
+    '<div class="summary-card"><div class="label">TASKS COMPLETE</div><div class="value '+(pct===100?'green':'yellow')+'">'+done+' / '+total+'</div></div>'+
+    '<div class="summary-card"><div class="label">COMPLETION</div><div class="value '+(pct===100?'green':'yellow')+'">'+pct+'%</div></div>'+
+    '<div class="summary-card"><div class="label">DEPARTMENTS DONE</div><div class="value '+(completeDepts===DEPARTMENTS.length?'green':'yellow')+'">'+completeDepts+' / '+DEPARTMENTS.length+'</div></div>'+
+    '<div class="summary-card"><div class="label">DATE</div><div class="value" style="font-size:0.72rem">'+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</div></div>';
+}
+
+// ── SUPERVISOR SIGN-OFF ───────────────────────────────────
+function buildSupervisorSection(deptId,s,deptComplete){
+  if(s.supApproved){
+    return '<div class="supervisor-section approved" id="supSection_'+deptId+'">'
+      +'<div class="supervisor-label">🔐 Supervisor Sign-off · <span style="font-weight:400;font-size:0.62rem">ကြီးကြပ်သူနှင့် ဆွေးနွေးပြီး ဤနေရာတွင် လက်မှတ်ထိုးခိုင်းပါ။</span></div>'
+      +'<div class="supervisor-approved-row">'
+      +'<span class="supervisor-approved-badge">✅ Approved</span>'
+      +'<span class="supervisor-approved-meta">by <strong>'+s.supName+'</strong> at '+s.supTime+'</span>'
+      +'<button type="button" class="btn btn-danger" style="font-size:0.65rem;padding:3px 9px" onclick="onSupervisorRevoke(\''+deptId+'\')">Revoke</button>'
+      +'</div>'
+      +'</div>';
+  }
+  if(!deptComplete){
+    return '<div class="supervisor-section" id="supSection_'+deptId+'">'
+      +'<div class="supervisor-label">🔐 Supervisor Sign-off · <span style="font-weight:400;font-size:0.62rem">ကြီးကြပ်သူနှင့် ဆွေးနွေးပြီး ဤနေရာတွင် လက်မှတ်ထိုးခိုင်းပါ။</span></div>'
+      +'<div class="supervisor-locked-notice">Complete all items above to enable supervisor sign-off.</div>'
+      +'</div>';
+  }
+  return '<div class="supervisor-section" id="supSection_'+deptId+'">'
+    +'<div class="supervisor-label">🔐 Supervisor Sign-off — All items complete · <span style="font-weight:400;font-size:0.62rem">ကြီးကြပ်သူနှင့် ဆွေးနွေးပြီး ဤနေရာတွင် လက်မှတ်ထိုးခိုင်းပါ။</span></div>'
+    +'<div class="supervisor-input-row">'
+    +'<input class="supervisor-inp" id="supInp_'+deptId+'" placeholder="Supervisor name…" type="text">'
+    +'<button type="button" class="btn-approve" onclick="onSupervisorApprove(\''+deptId+'\')">Approve ✓</button>'
+    +'</div>'
+    +'</div>';
+}
+
+function onSupervisorApprove(deptId){
+  var inp=document.getElementById('supInp_'+deptId);
+  var name=(inp?inp.value:'').trim();
+  if(!name){if(inp){inp.style.borderColor='#fa3e3e';inp.focus();}showToast('⚠️ Enter supervisor name first');return;}
+  var now=new Date();
+  var t=pad(now.getHours())+':'+pad(now.getMinutes());
+  state[deptId].supApproved=true;
+  state[deptId].supName=name;
+  state[deptId].supTime=t;
+  // Update section HTML in place
+  var sec=document.getElementById('supSection_'+deptId);
+  if(sec){sec.outerHTML='<div class="supervisor-section approved" id="supSection_'+deptId+'">'
+    +'<div class="supervisor-label">🔐 Supervisor Sign-off · <span style="font-weight:400;font-size:0.62rem">ကြီးကြပ်သူနှင့် ဆွေးနွေးပြီး ဤနေရာတွင် လက်မှတ်ထိုးခိုင်းပါ။</span></div>'
+    +'<div class="supervisor-approved-row">'
+    +'<span class="supervisor-approved-badge">✅ Approved</span>'
+    +'<span class="supervisor-approved-meta">by <strong>'+name+'</strong> at '+t+'</span>'
+    +'<button type="button" class="btn btn-danger" style="font-size:0.65rem;padding:3px 9px" onclick="onSupervisorRevoke(\''+deptId+'\')">Revoke</button>'
+    +'</div>'
+    +'</div>';}
+  // Show sup badge in header
+  var badge=document.getElementById('supbadge_'+deptId);
+  if(badge)badge.style.display='inline-block';
+  showToast('✅ '+deptId+' approved by '+name);
+  updateSaveButtonState();
+  scheduleAutoSave();
+}
+
+function onSupervisorRevoke(deptId){
+  if(!confirm('Remove supervisor sign-off for this department?'))return;
+  state[deptId].supApproved=false;state[deptId].supName='';state[deptId].supTime='';
+  var dept=DEPARTMENTS.find(function(d){return d.id===deptId;});
+  var s=state[deptId];
+  var doneCount=s.checks.filter(Boolean).length,total=dept.items.length;
+  var sec=document.getElementById('supSection_'+deptId);
+  if(sec)sec.outerHTML=buildSupervisorSection(deptId,state[deptId],doneCount===total);
+  var badge=document.getElementById('supbadge_'+deptId);
+  if(badge)badge.style.display='none';
+  updateSaveButtonState();
+  scheduleAutoSave();
+}
+
+function allCompletedDeptsApproved(){
+  return DEPARTMENTS.every(function(d){
+    var s=state[d.id];
+    var doneCount=s&&s.checks?s.checks.filter(Boolean).length:0;
+    var total=d.items.length;
+    // Only require approval if the dept is fully done
+    if(doneCount===total) return s.supApproved;
+    return true; // incomplete depts don't need approval yet
+  });
+}
+
+function updateSaveButtonState(){
+  var approved=allCompletedDeptsApproved();
+  ['mainSaveBtn','nameBarSaveBtn'].forEach(function(id){
+    var btn=document.getElementById(id);
+    if(btn){
+      btn.disabled=!approved;
+      btn.style.opacity=approved?'1':'0.5';
+      btn.style.cursor=approved?'pointer':'not-allowed';
+      btn.title=approved?'':'Complete supervisor sign-off for all finished departments first';
+    }
+  });
+  var notice=document.getElementById('submitLockNotice');
+  if(notice){notice.className='submit-lock'+(approved?'':' visible');}
+}
+
+// ── RENDER ────────────────────────────────────────────────
+function buildHealthInner(deptId,rating){
+  var icons=['🔴','🟠','🟡','🟢','💚'],stars='';
+  for(var v=1;v<=5;v++) stars+='<span class="health-star'+(rating>=v?' active':'')+'" onclick="onHealthRate(\''+deptId+'\','+v+')" title="'+HEALTH_LABELS[v]+'">'+icons[v-1]+'</span>';
+  var sc=rating?'hs-'+rating:'',st=rating?HEALTH_LABELS[rating]:'Not rated';
+  return'<div class="health-rating-label">HEALTH</div><div class="health-stars">'+stars+'</div><div class="health-status '+sc+'">'+st+'</div>';
+}
+
+function renderAll(){
+  var container=document.getElementById('departments');
+  container.innerHTML='';
+  DEPARTMENTS.forEach(function(dept,di){
+    var s=state[dept.id],doneCount=s.checks.filter(Boolean).length,total=dept.items.length,pct=total?(doneCount/total*100):0;
+    var itemsHTML='';
+    dept.items.forEach(function(item,i){
+      var isHealthItem=dept.hasHealthRating&&i===0;
+      var healthWidget=isHealthItem?'<div class="health-rating-wrap" id="healthWidget_'+dept.id+'">'+buildHealthInner(dept.id,s.healthRating||0)+'</div>':'';
+      var whoBy=s.checkedBy&&s.checkedBy[i]?s.checkedBy[i]:'';
+      itemsHTML+=
+        '<div class="checklist-item'+(s.checks[i]?' checked':'')+'" id="row_'+dept.id+'_'+i+'">'
+        +'<input type="checkbox" id="chk_'+dept.id+'_'+i+'" '+(s.checks[i]?'checked':'')+' onchange="onCheck(\''+dept.id+'\','+i+')">'
+        +'<span class="item-num">'+(i+1)+'</span>'
+        +'<div class="item-text">'+item.en+'<span class="burmese">'+item.my+'</span></div>'
+        +(whoBy?'<span class="who-checked" id="who_'+dept.id+'_'+i+'" style="display:'+(s.checks[i]?'block':'none')+'">✓ '+whoBy+'</span>':'<span class="who-checked" id="who_'+dept.id+'_'+i+'" style="display:none"></span>')
+        +healthWidget
+        +'<div class="time-wrap"><input type="time" class="time-input" id="time_'+dept.id+'_'+i+'" value="'+(s.times[i]||'')+'" placeholder="--:--" onchange="onTime(\''+dept.id+'\','+i+')"><div class="time-label">time</div></div>'
+        +'</div>';
+    });
+    var html=
+      '<div class="department'+(doneCount===total?' complete':'')+'" id="dept_'+dept.id+'">'
+      +'<div class="dept-header" onclick="toggleDept(\''+dept.id+'\')">'
+      +'<div class="dept-title"><span class="dept-icon">'+dept.icon+'</span><div class="dept-title-text"><span>'+dept.name+'</span><span class="dept-title-my">'+dept.burmese+'</span></div></div>'
+      +'<div style="display:flex;align-items:center;gap:0.65rem">'
+      +'<span class="dept-badge'+(doneCount===total?' done':'')+'" id="badge_'+dept.id+'">'+doneCount+'/'+total+'</span>'
+      +(s.supApproved?'<span class="dept-sup-badge" id="supbadge_'+dept.id+'">✓ SUP</span>':'<span class="dept-sup-badge" id="supbadge_'+dept.id+'" style="display:none">✓ SUP</span>')
+      +'<div class="dept-mini-bar"><div class="dept-mini-fill" id="fill_'+dept.id+'" style="width:'+pct+'%"></div></div>'
+      +'<span class="dept-arrow'+(di===0?' open':'')+'" id="arrow_'+dept.id+'">&#9658;</span>'
+      +'</div></div>'
+      +'<div class="dept-body'+(di===0?' open':'')+'" id="body_'+dept.id+'">'
+      +itemsHTML
+      +'<div class="notes-section"><div class="notes-label">NOTES / ISSUES FOR THIS DEPARTMENT</div>'
+      +'<textarea class="notes-input" id="notes_'+dept.id+'" placeholder="Add any issues, observations, or notes..." oninput="onNotes(\''+dept.id+'\')">'+( s.notes||'')+'</textarea></div>'
+      +buildSupervisorSection(dept.id,s,doneCount===total)
+      +'</div></div>';
+    container.insertAdjacentHTML('beforeend',html);
+  });
+  updateProgress();
+}
+
+function toggleDept(id){document.getElementById('body_'+id).classList.toggle('open');document.getElementById('arrow_'+id).classList.toggle('open');}
+function expandAll(){DEPARTMENTS.forEach(function(d){document.getElementById('body_'+d.id).classList.add('open');document.getElementById('arrow_'+d.id).classList.add('open');});}
+function collapseAll(){DEPARTMENTS.forEach(function(d){document.getElementById('body_'+d.id).classList.remove('open');document.getElementById('arrow_'+d.id).classList.remove('open');});}
+
+function resetDay(){
+  if(!confirm('Reset all checkboxes for today?\nယနေ့ စစ်ဆေးမှုများအားလုံး ပြန်သိမ်းမည်လား?'))return;
+  state=emptyState();renderAll();showToast('Checklist reset');
+}
+
+function exportReport(){
+  var date=new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  var lines=['SIAM REPTILE RANCH — DAILY OPERATIONS REPORT','Date: '+date,'Generated: '+new Date().toLocaleTimeString(),'','============================================================'];
+  DEPARTMENTS.forEach(function(dept){
+    var s=state[dept.id],done=s.checks.filter(Boolean).length;
+    lines.push('',''+dept.icon+' '+dept.name.toUpperCase()+' ('+done+'/'+dept.items.length+' complete)');
+    if(dept.hasHealthRating){var r=s.healthRating||0;lines.push('  Health: '+(r?HEALTH_ICONS[r]+' '+HEALTH_LABELS[r]+' ('+r+'/5)':'Not rated'));}
+    lines.push('--------------------------------------------------');
+    dept.items.forEach(function(item,i){
+      var check=s.checks[i]?'✓':'✗',time=s.times[i]?' ['+s.times[i]+']':'',who=s.checkedBy&&s.checkedBy[i]?' — '+s.checkedBy[i]:'';
+      lines.push('  '+check+' '+item.en+time+who);
+    });
+    if(s.notes)lines.push('  Notes: '+s.notes);
+    if(s.supApproved)lines.push('  ✅ Supervisor: '+s.supName+' at '+s.supTime);
+    else lines.push('  ⏳ Supervisor: Not yet approved');
+  });
+  var total=totalTasks(),done=doneTasks();
+  lines.push('','============================================================','TOTAL: '+done+'/'+total+' tasks ('+Math.round(done/total*100)+'%)');
+  // VET REPORT
+  lines.push('','','╔══════════════════════════════════════════════════════════╗','  🩺  VETERINARY HEALTH REPORT','╚══════════════════════════════════════════════════════════╝');
+  VET_ANIMALS.forEach(function(a){
+    var s=vetState.animals[a.id];
+    lines.push('',''+a.icon+' '+a.name.toUpperCase());
+    lines.push('  Status: '+(s.status||'Not assessed'));
+    if(s.vet1) lines.push('  Vet 1: '+s.vet1);
+    if(s.vet2) lines.push('  Vet 2: '+s.vet2);
+    lines.push('  Found sick: '+(s.sickCount||'0')+' · Better: '+(s.betterCount||'0')+' · Deaths: '+(s.deaths||'0'));
+    lines.push('  Feeding: '+(s.feeding||'—'));
+    if(s.notes) lines.push('  Notes: '+s.notes);
+  });
+  lines.push('');
+  lines.push('Vet Sign-off: '+(vetState.vetSigned?'✅ '+vetState.vetName+' at '+vetState.vetTime:'⏳ Not signed'));
+  lines.push('Manager Acknowledgement: '+(vetState.mgrSigned?'✅ '+vetState.mgrName+' at '+vetState.mgrTime:'⏳ Not acknowledged'));
+  var blob=new Blob([lines.join('\n')],{type:'text/plain'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='SRR_Checklist_'+new Date().toISOString().slice(0,10)+'.txt';a.click();
+  showToast('Report exported!');
+}
+function printReport(){window.print();}
+
+// ── VET HEALTH REPORT ────────────────────────────────────
+var VET_ANIMALS = [
+  {id:'vet_hibernation', name:'Hibernation Rooms', icon:'❄️', my:'ဆောင်းခိုခြင်း အခန်းများ'},
+  {id:'vet_woodencage',  name:'Wooden Cage',        icon:'🪵', my:'သစ်သားသင်တန်း'},
+  {id:'vet_infr',        name:'INFR #1 & #2',       icon:'🦎', my:'INFR အခန်းများ'},
+  {id:'vet_blacktubs',   name:'Black Tubs',          icon:'⬛', my:'အနက်ရောင် ပုံးများ'},
+  {id:'vet_whitetubs',   name:'White Tubs',          icon:'⬜', my:'အဖြူရောင် ပုံးများ'},
+  {id:'vet_fr',          name:'FR #1 & #2',          icon:'🐊', my:'FR အခန်းများ'},
+  {id:'vet_cricket',     name:'Cricket Department',  icon:'🦗', my:'ခရစ်ကတ်ဌာန'},
+];
+
+var STATUS_OPTS = ['','Healthy','Monitor','Sick'];
+var STATUS_CLASSES = {'Healthy':'vet-badge-healthy','Monitor':'vet-badge-monitor','Sick':'vet-badge-sick','':'vet-badge-none'};
+
+function emptyVetState(){
+  var v={vetSigned:false,vetName:'',vetTime:'',mgrSigned:false,mgrName:'',mgrTime:'',animals:{}};
+  VET_ANIMALS.forEach(function(a){
+    v.animals[a.id]={status:'',sickCount:'',betterCount:'',deaths:'',feeding:'',notes:'',vet1:'',vet2:''};
+  });
+  return v;
+}
+
+var vetState = emptyVetState();
+
+function saveVetField(animalId, field, value){
+  vetState.animals[animalId][field] = value;
+  updateVetSummaryBar();
+  updateVetSignState();
+  scheduleAutoSave();
+}
+
+function updateVetSummaryBar(){
+  var healthy=0, monitor=0, sick=0, deaths=0, filled=0;
+  VET_ANIMALS.forEach(function(a){
+    var s=vetState.animals[a.id];
+    if(s.status==='Healthy') healthy++;
+    else if(s.status==='Monitor') monitor++;
+    else if(s.status==='Sick') sick++;
+    deaths+=parseInt(s.deaths||0,10)||0;
+    if(s.status) filled++;
+  });
+  document.getElementById('vetStatHealthy').textContent=healthy;
+  document.getElementById('vetStatMonitor').textContent=monitor;
+  document.getElementById('vetStatSick').textContent=sick;
+  document.getElementById('vetStatMeds').textContent=deaths;
+  document.getElementById('vetStatFilled').textContent=filled+'/'+VET_ANIMALS.length;
+  document.getElementById('vetPanelBadge').textContent=filled+' / '+VET_ANIMALS.length+' filled';
+  // update each card header badge
+  VET_ANIMALS.forEach(function(a){
+    var s=vetState.animals[a.id];
+    var el=document.getElementById('vetCardBadge_'+a.id);
+    if(el){
+      el.className='vet-badge-status '+(STATUS_CLASSES[s.status]||'vet-badge-none');
+      el.textContent=s.status||'Not assessed';
+    }
+  });
+}
+
+function vetAllFilled(){
+  return VET_ANIMALS.every(function(a){ return !!vetState.animals[a.id].status; });
+}
+
+function updateVetSignState(){
+  var allFilled=vetAllFilled();
+  var vetSigned=vetState.vetSigned;
+  var mgrSigned=vetState.mgrSigned;
+
+  // vet sign box
+  document.getElementById('vetSignLocked').style.display=(!allFilled&&!vetSigned)?'block':'none';
+  document.getElementById('vetSignInputArea').style.display=(allFilled&&!vetSigned)?'flex':'none';
+  var vetDoneEl=document.getElementById('vetSignDone');
+  if(vetSigned){
+    vetDoneEl.style.display='block';
+    vetDoneEl.innerHTML='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="vet-signed-badge">✅ Signed</span><span class="vet-signed-meta">by <strong>'+vetState.vetName+'</strong> at '+vetState.vetTime+'</span></div>'
+      +'<button type="button" class="btn btn-danger" style="font-size:0.62rem;padding:2px 8px;margin-top:6px" onclick="onVetRevoke()">Revoke</button>';
+    document.getElementById('vetSignBox').className='vet-signoff-box signed';
+  } else {
+    vetDoneEl.style.display='none';
+    document.getElementById('vetSignBox').className='vet-signoff-box';
+  }
+
+  // mgr sign box
+  document.getElementById('mgrSignLocked').style.display=(!vetSigned&&!mgrSigned)?'block':'none';
+  document.getElementById('mgrSignInputArea').style.display=(vetSigned&&!mgrSigned)?'flex':'none';
+  var mgrDoneEl=document.getElementById('mgrSignDone');
+  if(mgrSigned){
+    mgrDoneEl.style.display='block';
+    mgrDoneEl.innerHTML='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="vet-signed-badge vet-signed-badge-mgr">✅ Acknowledged</span><span class="vet-signed-meta">by <strong>'+vetState.mgrName+'</strong> at '+vetState.mgrTime+'</span></div>'
+      +'<button type="button" class="btn btn-danger" style="font-size:0.62rem;padding:2px 8px;margin-top:6px" onclick="onMgrRevoke()">Revoke</button>';
+    document.getElementById('mgrSignBox').className='vet-signoff-box signed-mgr';
+  } else {
+    mgrDoneEl.style.display='none';
+    document.getElementById('mgrSignBox').className='vet-signoff-box';
+  }
+}
+
+function onVetSign(){
+  var name=(document.getElementById('vetSignName').value||'').trim();
+  if(!name){document.getElementById('vetSignName').style.borderColor='#fa3e3e';showToast('⚠️ Enter vet name');return;}
+  var t=pad(new Date().getHours())+':'+pad(new Date().getMinutes());
+  vetState.vetSigned=true;vetState.vetName=name;vetState.vetTime=t;
+  updateVetSignState();showToast('✅ Vet report signed by '+name);scheduleAutoSave();
+}
+function onVetRevoke(){
+  if(!confirm('Remove vet sign-off?'))return;
+  vetState.vetSigned=false;vetState.vetName='';vetState.vetTime='';
+  vetState.mgrSigned=false;vetState.mgrName='';vetState.mgrTime='';
+  updateVetSignState();scheduleAutoSave();
+}
+function onMgrSign(){
+  var name=(document.getElementById('mgrSignName').value||'').trim();
+  if(!name){document.getElementById('mgrSignName').style.borderColor='#fa3e3e';showToast('⚠️ Enter manager name');return;}
+  var t=pad(new Date().getHours())+':'+pad(new Date().getMinutes());
+  vetState.mgrSigned=true;vetState.mgrName=name;vetState.mgrTime=t;
+  updateVetSignState();showToast('✅ Manager acknowledged: '+name);scheduleAutoSave();
+}
+function onMgrRevoke(){
+  if(!confirm('Remove manager acknowledgement?'))return;
+  vetState.mgrSigned=false;vetState.mgrName='';vetState.mgrTime='';
+  updateVetSignState();scheduleAutoSave();
+}
+
+function toggleVetAnimal(id){
+  var body=document.getElementById('vetBody_'+id);
+  var arrow=document.getElementById('vetArrow_'+id);
+  if(body)body.classList.toggle('open');
+  if(arrow)arrow.classList.toggle('open');
+}
+function toggleVetPanel(){
+  var body=document.getElementById('vetPanelBody');
+  var btn=document.querySelector('[onclick="toggleVetPanel()"]');
+  body.style.display=(body.style.display==='none')?'block':'none';
+  if(btn)btn.textContent=body.style.display==='none'?'▶ Expand':'▼ Collapse';
+}
+
+function mergeVetState(remote){
+  if(!remote) return;
+  if(remote.vetSigned&&!vetState.vetSigned){vetState.vetSigned=true;vetState.vetName=remote.vetName||'';vetState.vetTime=remote.vetTime||'';}
+  if(remote.mgrSigned&&!vetState.mgrSigned){vetState.mgrSigned=true;vetState.mgrName=remote.mgrName||'';vetState.mgrTime=remote.mgrTime||'';}
+  if(remote.animals){
+    VET_ANIMALS.forEach(function(a){
+      var ra=remote.animals[a.id];if(!ra)return;
+      var la=vetState.animals[a.id];
+      if(ra.status&&!la.status) la.status=ra.status;
+      if(ra.sickCount&&!la.sickCount) la.sickCount=ra.sickCount;
+      if(ra.betterCount&&!la.betterCount) la.betterCount=ra.betterCount;
+      if(ra.deaths&&!la.deaths) la.deaths=ra.deaths;
+      if(ra.feeding&&!la.feeding) la.feeding=ra.feeding;
+      if(ra.notes&&!la.notes) la.notes=ra.notes;
+      if(ra.vet1&&!la.vet1) la.vet1=ra.vet1;
+      if(ra.vet2&&!la.vet2) la.vet2=ra.vet2;
+    });
+  }
+  renderVetCards();
+}
+
+function renderVetCards(){
+  var container=document.getElementById('vetAnimalCards');
+  container.innerHTML='';
+  VET_ANIMALS.forEach(function(a,i){
+    var s=vetState.animals[a.id];
+    var statusClass=STATUS_CLASSES[s.status]||'vet-badge-none';
+    var deathsNum=parseInt(s.deaths||0,10)||0;
+    var deathColor=deathsNum>0?'color:#dc2626;font-weight:700':'';
+    var html=
+      '<div class="vet-animal-card'+(s.status?' vet-done':'')+'" id="vetCard_'+a.id+'">'
+      +'<div class="vet-animal-header" onclick="toggleVetAnimal(\''+a.id+'\')">'
+      +'<div class="vet-animal-name"><span>'+a.icon+'</span><div>'
+      +'<div>'+a.name+'</div>'
+      +'<div style="font-size:0.65rem;font-weight:400;color:var(--muted)">'+a.my+'</div>'
+      +'</div></div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +(deathsNum>0?'<span style="font-size:0.6rem;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;padding:2px 7px;border-radius:10px;font-weight:700">💀 '+deathsNum+' death'+(deathsNum>1?'s':'')+'</span>':'')
+      +'<span class="vet-badge-status '+statusClass+'" id="vetCardBadge_'+a.id+'">'+(s.status||'Not assessed')+'</span>'
+      +'<span class="vet-animal-arrow'+(i===0?' open':'')+'" id="vetArrow_'+a.id+'">&#9658;</span>'
+      +'</div>'
+      +'</div>'
+      +'<div class="vet-animal-body'+(i===0?' open':'')+'" id="vetBody_'+a.id+'">'
+
+      // Row 1: Status + Vet names
+      +'<div class="vet-field-grid" style="margin-bottom:0.75rem">'
+
+      +'<div class="vet-field-row">'
+      +'<div class="vet-field-label">Overall Status <span style="font-weight:400;color:var(--muted)">· ကျန်းမာရေးအခြေအနေ</span></div>'
+      +'<select class="vet-select" onchange="saveVetField(\''+a.id+'\',\'status\',this.value)">'
+      +STATUS_OPTS.map(function(o){return'<option value="'+o+'"'+(s.status===o?' selected':'')+'>'+( o||'— Select / ရွေးချယ်ပါ —')+'</option>';}).join('')
+      +'</select></div>'
+
+      +'<div class="vet-field-row">'
+      +'<div class="vet-field-label">Vet 1 Name <span style="font-weight:400;color:var(--muted)">· ဆရာဝန် ၁ နာမည်</span></div>'
+      +'<input class="vet-input" value="'+(s.vet1||'')+'" placeholder="စစ်ဆေးသော ဆရာဝန် ၁…" oninput="saveVetField(\''+a.id+'\',\'vet1\',this.value)"></div>'
+
+      +'<div class="vet-field-row">'
+      +'<div class="vet-field-label">Vet 2 Name <span style="font-weight:400;color:var(--muted)">· ဆရာဝန် ၂ နာမည်</span></div>'
+      +'<input class="vet-input" value="'+(s.vet2||'')+'" placeholder="ဒုတိယ ဆရာဝန် (ရှိလျှင်)…" oninput="saveVetField(\''+a.id+'\',\'vet2\',this.value)"></div>'
+
+      +'</div>'
+
+      // Row 2: Sick count + Better count + Deaths
+      +'<div class="vet-field-grid" style="margin-bottom:0.75rem">'
+
+      +'<div class="vet-field-row">'
+      +'<div class="vet-field-label">How Many Found Sick <span style="font-weight:400;color:var(--muted)">· မည်မျှ နာမကျန်းဖြစ်သည်</span></div>'
+      +'<input class="vet-input" type="number" min="0" value="'+(s.sickCount||'')+'" placeholder="0" oninput="saveVetField(\''+a.id+'\',\'sickCount\',this.value)" style="max-width:120px"></div>'
+
+      +'<div class="vet-field-row">'
+      +'<div class="vet-field-label">How Many Better <span style="font-weight:400;color:var(--muted)">· မည်မျှ ပြန်ကောင်းသည်</span></div>'
+      +'<input class="vet-input" type="number" min="0" value="'+(s.betterCount||'')+'" placeholder="0" oninput="saveVetField(\''+a.id+'\',\'betterCount\',this.value)" style="max-width:120px"></div>'
+
+      +'<div class="vet-field-row">'
+      +'<div class="vet-field-label" style="'+(deathsNum>0?'color:#dc2626':'')+'">Deaths Found <span style="font-weight:400;color:var(--muted)">· သေဆုံးသောတိရစ္ဆာန်</span></div>'
+      +'<input class="vet-input" type="number" min="0" value="'+(s.deaths||'')+'" placeholder="0" oninput="saveVetField(\''+a.id+'\',\'deaths\',this.value)" style="max-width:120px;'+(deathsNum>0?'border-color:#fca5a5;background:#fff5f5':'')+'"></div>'
+
+      +'</div>'
+
+      // Row 3: Feeding
+      +'<div class="vet-field-grid" style="margin-bottom:0.75rem">'
+      +'<div class="vet-field-row">'
+      +'<div class="vet-field-label">Feeding Status <span style="font-weight:400;color:var(--muted)">· အစာကျွေးမှုအခြေအနေ</span></div>'
+      +'<select class="vet-select" onchange="saveVetField(\''+a.id+'\',\'feeding\',this.value)">'
+      +[
+        {v:'',l:'— Select / ရွေးချယ်ပါ —'},
+        {v:'Eating normally',l:'Eating normally · ပုံမှန်စားသည်'},
+        {v:'Eating poorly',l:'Eating poorly · ကောင်းကောင်းမစားသည်'},
+        {v:'Refused food',l:'Refused food · အစာငြင်းသည်'},
+        {v:'Not due',l:'Not due · အချိန်မတန်သေးပါ'}
+      ].map(function(o){return'<option value="'+o.v+'"'+(s.feeding===o.v?' selected':'')+'>'+o.l+'</option>';}).join('')
+      +'</select></div>'
+      +'</div>'
+
+      // Row 4: Notes
+      +'<div class="vet-field-row">'
+      +'<div class="vet-field-label">Notes / Concerns for Manager <span style="font-weight:400;color:var(--muted)">· မန်နေဂျာအတွက် မှတ်ချက်များ</span></div>'
+      +'<textarea class="vet-textarea" placeholder="မည်သည့်ပြဿနာ၊ လုပ်ဆောင်ရမည့်အချက်များ…  /  Any issues, behaviours, or actions needed…" oninput="saveVetField(\''+a.id+'\',\'notes\',this.value)">'+(s.notes||'')+'</textarea>'
+      +'</div>'
+
+      +'</div></div>';
+    container.insertAdjacentHTML('beforeend',html);
+  });
+  updateVetSummaryBar();
+  updateVetSignState();
+}
+
+// ── INIT ──────────────────────────────────────────────────
+var savedName=localStorage.getItem('srr_me')||'';
+if(savedName){ var ni=document.getElementById('employee-name');if(ni)ni.value=savedName; }
+setInterval(updateClock,1000);updateClock();
+renderVetCards();
+loadState(true);
+startPolling();
+</script>
+</body>
+</html>
